@@ -4,6 +4,8 @@ import { AxiosRequestConfig } from 'axios';
 import { FileUploadDto } from './content.dto';
 import * as fs from 'fs';
 import { exec } from 'child_process';
+import { promisify } from 'util';
+import { join } from 'path';
 
 @Injectable()
 export class ContentService {
@@ -40,57 +42,40 @@ export class ContentService {
       const inputFilePath = `uploadedFiles/${filename}`;
       const outputFilePath = `uploadedSignedFiles/${filename}`;
 
+      console.log('This is the binaryData:::', binaryData);
+      console.log('This is the filename:::', filename);
+      console.log('This is the inputFilePath:::', inputFilePath);
+      console.log('This is the outputFilePath:::', outputFilePath);
+
       // Write binary data to a file
-      fs.writeFileSync(inputFilePath, binaryData);
+      // fs.writeFileSync(inputFilePath, binaryData);
 
-      // const inputFilePath = `uploadedFiles/${fileName}`;
-      //   const outputFilePath = `uploadedFiles/${fileName}`;
-      // const fsPromises = fs.promises;
-      // logic to store token in cache and only get if expired from cache else get from endpoint
-      // await fs.appendFileSync(inputFilePath, body.file);
-      // await fsPromises.appendFile(inputFilePath, Buffer.from(body.file), {
-      //   flag: 'w',
-      // });
-      // const testCommand = 'cd uploadedFiles/ && pwd';
-
-      // await exec(testCommand, async (err, stdout, stderr) => {
-      //   this.logger.log(`shell script output: ${stdout}`);
-      //   if (stderr) {
-      //     this.logger.log(`shell script error: ${stderr}`);
-      //   }
-      //   result = stdout;
-      // });
-
-      // ./c2patool 'uploadedFiles/image_1715133432879.jpeg' -m manifest.json -o 'uploadedSignedFiles/image_1715133432879.jpeg' -f
-
+      const fsPromises = fs.promises;
+      await fsPromises.appendFile(inputFilePath, binaryData, {
+        flag: 'w',
+      });
       const command = `./c2patool ${inputFilePath} -m updatedManifest.json -o ${outputFilePath} -f`;
 
       // To add custom JSON:
       // const updatedCommand = `c2patool sample/image.jpg \
       // -c '{"ta_url": "http://timestamp.digicert.com", "claim_generator": "CAI_Demo/0.1", "title": "", "assertions": [{"label": "c2pa.actions", "data": {"actions": [{"action": "c2pa.published"}]}}]}'`;
 
-      //   const { stdout, stderr } = exec(command);
-      // let result;
-      const result = await exec(command, (err, stdout, stderr) => {
-        this.logger.log(`shell script output: ${stdout}`);
-        if (stderr) {
-          this.logger.log(`shell script error: ${stderr}`);
-          throw new Error('shell script error while siging credential');
-        }
-      });
+      const { stdout, stderr } = await exec(command);
 
-      //   if (stderr) {
-      //     console.error(`Error executing command: ${JSON.stringify(stderr)}`);
-      //     // return ''; // or throw an error
-      //   }
+      await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      //   const report: any = stdout;
-      //   fs.writeFileSync(path, buffer);
-      console.log('This is the result:::', result);
-      console.log('returning file name from service');
-      return filename;
+      const readFile = promisify(fs.readFile);
+      const imageBuffer = await readFile(join(process.cwd(), outputFilePath));
+      const base64 = imageBuffer.toString('base64');
+      const imageUrl = `data:image/${imageType};base64,${base64}`;
+
+      console.log('This is the stdout:::', stdout);
+      console.log('This is the stderr:::', stderr);
+
+      return imageUrl;
     } catch (err) {
       this.logger.error('[signContent]::', err);
+      throw new Error(err.message);
     }
   }
 
