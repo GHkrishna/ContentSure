@@ -30,7 +30,4 @@ export class FileUploadDto {
   @IsOptional()
   @IsString()
   editor: string;
-
-  // Parameter taken from query,  mentioned here to be forwarded
-  fileName: string;
 }
