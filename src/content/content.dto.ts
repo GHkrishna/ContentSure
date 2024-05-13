@@ -1,8 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Transform } from 'class-transformer';
-import { IsBase64, IsOptional, IsString, Validate } from 'class-validator';
-import { ImageBase64Validator, trim } from 'src/commons/helpers';
+import { IsEmail, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class FileUploadDto {
   @ApiPropertyOptional()
@@ -11,23 +9,34 @@ export class FileUploadDto {
   //   @Validate(ImageBase64Validator)
   file: any = '';
 
-  @ApiProperty()
+  @ApiProperty({ example: 'TitleCustom' })
   @IsOptional()
   @IsString()
   title: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: 'Alice' })
   @IsOptional()
   @IsString()
-  author: string;
+  authorName: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: 'https://twitter.com' })
+  @IsOptional()
+  @IsString()
+  authorSocial: string;
+
+  @ApiProperty({ example: 'Snippet News' })
   @IsOptional()
   @IsString()
   publishedBy: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: 'Bob' })
   @IsOptional()
   @IsString()
   editor: string;
+
+  @ApiProperty({ example: 'krishna123@yopmail.com' })
+  @IsEmail()
+  @IsNotEmpty()
+  @IsOptional()
+  authorEmail: string;
 }
