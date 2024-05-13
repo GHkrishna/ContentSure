@@ -1,6 +1,6 @@
 import { HttpService } from '@nestjs/axios';
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { AxiosRequestConfig } from 'axios';
+import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
 import { manifest } from '../commons/manifest';
 
 import * as fs from 'fs';
@@ -9,6 +9,7 @@ import { promisify } from 'util';
 import { join } from 'path';
 import { IFileUpload } from './content.interface';
 import { CACHE_MANAGER, CacheStore } from '@nestjs/cache-manager';
+import { randomUUID } from 'crypto';
 
 @Injectable()
 export class ContentService {
@@ -109,12 +110,12 @@ export class ContentService {
   // Send credential to author
   async sendCredentialToAuthor(
     authorEmail: string,
-    author: string,
+    authorName: string,
     publishedBy: string,
     title: string,
   ) {
     console.log('This is authorEmail::::::', authorEmail);
-    console.log('This is author::::::', author);
+    console.log('This is author::::::', authorName);
     console.log('This is publishedBy::::::', publishedBy);
     console.log('This is title::::::', title);
 
@@ -122,11 +123,61 @@ export class ContentService {
 
     if (!token) {
       token = await this.getToken();
-      await this.cacheManager.set('token', token, 1000);
+      // Expiry set according to expiry of token from credebl
+      await this.cacheManager.set('token', token, 28800);
       console.log('this is token inside if condition:::', token);
     }
 
     console.log('this is token:::', token);
+
+    // URL endpoint for issuing credential
+    const url = `https://devapi.credebl.id/orgs/${process.env.SNIPPET_NEWS_ORGID}/credentials/oob/email?credentialType=indy`;
+
+    const headers = {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json', // Adjust content type as needed
+      Accept: 'application/json',
+    };
+
+    const config: AxiosRequestConfig = {
+      headers: headers,
+    };
+
+    const uuid = randomUUID();
+
+    const body: any = {
+      credentialOffer: [
+        {
+          emailId: authorEmail,
+          attributes: [
+            {
+              name: 'Title of article',
+              value: title,
+            },
+            {
+              name: 'Name',
+              value: authorName,
+            },
+            {
+              name: 'Certificate Id',
+              value: uuid,
+            },
+          ],
+        },
+      ],
+      credentialDefinitionId: `${process.env.CRED_DEF_ID}`,
+      comment: 'First credential from Snippet News',
+      protocolVersion: 'v1',
+      credentialType: 'indy',
+    };
+
+    try {
+      const response: AxiosResponse<any> = await axios.post(url, body, config);
+      return response.data;
+    } catch (error) {
+      console.error(`Error making HTTP POST request: ${error}`);
+      return null;
+    }
   }
 
   // Get token required to make API calls to credebl
